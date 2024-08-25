@@ -1,0 +1,1 @@
+echo "# Zap Imóveis Scraper" > README.md
