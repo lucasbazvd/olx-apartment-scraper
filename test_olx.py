@@ -1,3 +1,4 @@
+print("Script is starting...")
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -9,13 +10,24 @@ import random
 import re
 from datetime import datetime
 
+import time
+import random
+import re
+from datetime import datetime
+
 chrome_options = Options()
+#chrome_options.add_argument("--headless")
+chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument("--incognito")
 chrome_options.add_argument("--ignore-certificate-errors")
 chrome_options.add_argument("--ignore-ssl-errors")
 chrome_options.add_argument("--log-level=1")
 chrome_options.add_argument("--disable-web-security")
+chrome_options.add_argument("--disable-gpu")
+chrome_options.add_argument("--remote-debugging-port=9222")
 
+print("Initializing WebDriver...")
 driver = webdriver.Chrome(options=chrome_options)
 
 pages = 69
@@ -134,7 +146,7 @@ for i in range(1, pages):
     WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.CSS_SELECTOR, "section.olx-ad-card.olx-ad-card--horizontal"))
     )
-
+    
     scroll_slowly(driver)
 
     apartments = get_apartment_data(driver)
