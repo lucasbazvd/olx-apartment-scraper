@@ -1,3 +1,4 @@
+import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -5,6 +6,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 import random
+import re
+from datetime import datetime
 
 chrome_options = Options()
 chrome_options.add_argument("--incognito")
@@ -15,20 +18,51 @@ chrome_options.add_argument("--disable-web-security")
 
 driver = webdriver.Chrome(options=chrome_options)
 
-pages = 70
+pages = 69
 
 def scroll_slowly(driver):
     total_height = driver.execute_script("return document.body.scrollHeight")
     scrolled = 0
     while scrolled < total_height:
-        scroll_amount = random.randint(250, 500)
+        scroll_amount = random.randint(500, 1000)
         driver.execute_script(f"window.scrollBy(0, {scroll_amount});")
         scrolled += scroll_amount
-        time.sleep(random.uniform(0.5, 1.5))
+        time.sleep(random.uniform(0.3, 0.7))
         new_height = driver.execute_script("return document.body.scrollHeight")
         if new_height > total_height:
             total_height = new_height
         print(f"Scrolled: {scrolled}/{total_height} pixels")
+
+def clean_integer(text):
+    if text == "N/A":
+        return None
+    return int(re.sub(r'\D', '', text))
+
+def extract_city_neighborhood(location):
+    if location == "N/A":
+        return "N/A", "N/A"
+    parts = location.split(',')
+    city = parts[0].strip()
+    neighborhood = parts[1].strip() if len(parts) > 1 else "N/A"
+    return city, neighborhood
+
+def process_apartment_data(apartments):
+    processed_data = []
+    for apt in apartments:
+        processed_apt = {
+            'title': apt['title'],
+            'price': clean_integer(apt['price']),
+            'rooms': clean_integer(apt['rooms']),
+            'area': clean_integer(apt['meters']),
+            'parking': clean_integer(apt['parking']),
+            'bathrooms': clean_integer(apt['bathrooms']),
+            'tax': clean_integer(apt['iptu']),
+            'condominium_fee': clean_integer(apt['condominio']),
+            'link': apt['link']
+        }
+        processed_apt['city'], processed_apt['neighborhood'] = extract_city_neighborhood(apt['location'])
+        processed_data.append(processed_apt)
+    return processed_data
 
 
 def get_apartment_data(driver):
@@ -48,7 +82,7 @@ def get_apartment_data(driver):
             # Initialize variables
             rooms = meters = parking = bathrooms = iptu = condominio = "N/A"
             
-            # Extract IPTU and Condomínio
+            # Extract tax and condominium_fee
             priceinfo_elements = element.find_elements(By.CSS_SELECTOR, "p.olx-ad-card__priceinfo-text")
             for info in priceinfo_elements:
                 if "IPTU" in info.text:
@@ -90,7 +124,7 @@ def get_apartment_data(driver):
 
     return apartments
 
-
+all_apartments = []
 for i in range(1, pages):
     url = f"https://www.olx.com.br/imoveis/aluguel/apartamentos/estado-pr/regiao-de-curitiba-e-paranagua?o={i}"
     driver.get(url)
@@ -104,6 +138,8 @@ for i in range(1, pages):
     scroll_slowly(driver)
 
     apartments = get_apartment_data(driver)
+    all_apartments.extend(apartments)
+
     
     print(f"\nPage {i}: Found {len(apartments)} apartments")
     for index, apt in enumerate(apartments, 1):
@@ -119,8 +155,17 @@ for i in range(1, pages):
         print(f"Location: {apt['location']}")
         print(f"Link: {apt['link']}")
 
-    pause_time = random.uniform(2.0, 4.0)
+    pause_time = random.uniform(1.0, 2.0)
     print(f"\nPausing for {pause_time:.2f} seconds before next page")
     time.sleep(pause_time)
 
 driver.quit()
+
+processed_data = process_apartment_data(all_apartments)
+df = pd.DataFrame(processed_data)
+
+# Save to CSV
+current_datetime = datetime.now().strftime("%Y%m%d_%H%M%S")
+csv_filename = f"apt_data_{current_datetime}.csv"
+df.to_csv(csv_filename, index=False)
+print(f"Data saved to {csv_filename}")
