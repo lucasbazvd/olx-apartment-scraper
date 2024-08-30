@@ -1,70 +1,56 @@
 import geopandas as gpd
-import matplotlib.pyplot as plt
-import os
+import folium
 from shapely.geometry import box
+import os
 
-# Define the base path
-base_path = r"F:\OneDrive\My Projects\Coding\Rent_Project"
+# Define paths
+base_path = r"F:\OneDrive\My Projects\Coding\Rent_Project\olx-apartment-scraper\geography"
+neighborhoods_file = os.path.join(base_path, "neighborhoods", "DIVISA_DE_BAIRROS.shp")
+roads_file = os.path.join(base_path, "OSM", "sul-latest-free.shp", "gis_osm_roads_free_1.shp")
 
-# Function to get city bounds (replace with actual coordinates for your city)
-def get_city_bounds(city_name):
-    # These are example coordinates for Curitiba
-    # Replace these with the actual coordinates of the city you're interested in
-    if city_name.lower() == "curitiba":
-        return (-49.3900, -25.5800, -49.1900, -25.3800)
-    else:
-        raise ValueError(f"Bounds for {city_name} not defined. Please add them to the function.")
+# Load neighborhoods data
+neighborhoods = gpd.read_file(neighborhoods_file)
 
-# Set the city you want to visualize
-city_name = "Curitiba"  # Change this to your city of interest
+# Define Curitiba's bounding box (you may need to adjust these coordinates)
+curitiba_bbox = box(-49.3900, -25.5800, -49.1900, -25.3800)
 
-# Get city bounds
-minx, miny, maxx, maxy = get_city_bounds(city_name)
+# Load and filter roads data for Curitiba
+roads = gpd.read_file(roads_file, bbox=curitiba_bbox)
 
-# Create a bounding box
-bbox = box(minx, miny, maxx, maxy)
+# Ensure both datasets are in the same CRS (WGS84)
+neighborhoods = neighborhoods.to_crs(epsg=4326)
+roads = roads.to_crs(epsg=4326)
 
-# Read the roads shapefile
-roads_file = os.path.join(base_path, "sul-latest-free.shp", "gis_osm_roads_free_1.shp")
-roads = gpd.read_file(roads_file, bbox=bbox)
+# Calculate the center of Curitiba
+center_lat = neighborhoods.geometry.centroid.y.mean()
+center_lon = neighborhoods.geometry.centroid.x.mean()
 
-# Width multiplier
-width_multiplier = 2  # Increase this value to make streets wider
+# Create a map
+m = folium.Map(location=[center_lat, center_lon], zoom_start=11)
 
-# Create a color and width mapping for different road types
-road_styles = {
-    'motorway': ('red', 2.5 * width_multiplier),
-    'trunk': ('orange', 2 * width_multiplier),
-    'primary': ('yellow', 1.5 * width_multiplier),
-    'secondary': ('green', 1 * width_multiplier),
-    'tertiary': ('blue', 0.75 * width_multiplier),
-    'residential': ('purple', 0.5 * width_multiplier),
-    'other': ('gray', 0.25 * width_multiplier)
-}
+# Add neighborhoods to the map
+folium.GeoJson(
+    neighborhoods,
+    style_function=lambda feature: {
+        'fillColor': 'lightblue',
+        'color': 'black',
+        'weight': 2,
+        'fillOpacity': 0.7,
+    }
+).add_to(m)
 
-# Create the plot
-fig, ax = plt.subplots(figsize=(15, 15))
+# Add roads to the map
+folium.GeoJson(
+    roads,
+    style_function=lambda feature: {
+        'color': 'purple',
+        'weight': 1,
+        'opacity': 0.7,
+    }
+).add_to(m)
 
-# Plot each road type
-for road_type, (color, width) in road_styles.items():
-    if road_type != 'other':
-        roads[roads['fclass'] == road_type].plot(ax=ax, color=color, linewidth=width, label=road_type)
-    else:
-        # Plot all other road types
-        mask = ~roads['fclass'].isin([k for k in road_styles.keys() if k != 'other'])
-        roads[mask].plot(ax=ax, color=color, linewidth=width, label=road_type)
+# Save the map
+output_file = os.path.join(base_path, "curitiba_map.html")
+m.save(output_file)
 
-# Customize the plot
-ax.set_title(f'Street Network in {city_name}', fontsize=20)
-ax.axis('off')
-plt.legend(title='Road Types', title_fontsize='13', fontsize='10')
-
-# Show the plot
-plt.tight_layout()
-plt.show()
-
-# Print some statistics
-print(f"Road network statistics for {city_name}:")
-print(roads['fclass'].value_counts())
-print(f"\nTotal number of road segments: {len(roads)}")
-print(f"Total length of roads: {roads.length.sum() / 1000:.2f} km")
+print(f"Map saved to {output_file}")
