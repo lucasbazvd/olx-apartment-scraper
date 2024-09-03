@@ -1,0 +1,15 @@
+# Tasks
+
+☐ Implement addresss scraping in the scraper
+☐ Normalize the road name in the address to match the roads SHP from OSM
+☐ Define the Database System to storage OLX data
+    ☐ Search for free options/resources
+    ☐ Config the storage system
+☐ Define cloud/server situation to host the database
+☐ Define how is going to happen the data ingestion (daily/weekly etc) cronjob
+☐ Solve the "road crossing multiple neighborhoods problem"
+☐ After setting the backend, create a web page and play with some frontend development
+✘ Define which few cities I'm gonna consider @cancelled (8/29/2024, 8:55:01 PM) ONLY CURITIBA
+✔ Get the geometry of Curitiba @done (8/29/2024, 9:03:35 PM)
+✔ Get the geometry of neighborhoods in Curitiba @done @done (8/29/2024, 9:49:19 PM)
+
